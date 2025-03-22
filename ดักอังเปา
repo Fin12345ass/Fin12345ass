@@ -1,0 +1,51 @@
+import nextcord
+import requests
+import os
+from dotenv import load_dotenv
+from nextcord.ext import commands
+
+# โหลด environment variables
+load_dotenv()
+TOKEN = os.getenv("DISCORD_BOT_TOKEN")
+MOBILE = os.getenv("MOBILE_NUMBER")
+
+intents = nextcord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix='!', intents=intents)
+
+@bot.event
+async def on_ready():
+    print(f'LOGGED IN AS: {bot.user}')
+
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return  # ไม่ให้บอทตอบกลับตัวเอง
+
+    if 'https://gift.truemoney.com/campaign/?v=' in message.content:
+        voucher_hash = message.content.split('=')[-1]  # แยกเอาเฉพาะโค้ด
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Origin': 'https://gift.truemoney.com',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Connection': 'keep-alive'
+        }
+        payload = {'mobile': MOBILE, 'voucher_hash': voucher_hash}
+
+        response = requests.post(
+            f"https://gift.truemoney.com/campaign/vouchers/{voucher_hash}/redeem",
+            headers=headers,
+            json=payload
+        )
+
+        if response.status_code == 200:
+            await message.channel.send("✅ รับเงินเรียบร้อยแล้ว!")
+        else:
+            await message.channel.send("❌ ไม่สามารถรับเงินได้!")
+
+    await bot.process_commands(message)  # ให้บอททำงานคำสั่งปกติด้วย
+
+bot.run(TOKEN)
